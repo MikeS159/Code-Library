@@ -2,7 +2,7 @@
 //MIT License(MIT)
 
 
-/*     AsyncSerial.cs Version 4.0        */
+/*     AsyncSerial.cs Version 4.1        */
 
 /*     Copyright(c) 2015 Mike Simpson      */
 
@@ -33,7 +33,7 @@ using System.Globalization;
 using System.IO;
 using System.IO.Ports;
 
-namespace AutoCal
+namespace AsyncSerial
 {
 
     #region classRegion
@@ -44,8 +44,15 @@ namespace AutoCal
     /// </summary>
     public class AsyncSerial : IDisposable
     {
+
+        #region Varibles
+
         SerialPort dotNETPort;
-        private string portErrorMessage = null;
+        private string portErrorMessage = "";
+
+        #endregion
+
+        #region Constructo
         /// <summary>
         /// Constructor for BoardSerialReciver
         /// </summary>
@@ -105,12 +112,23 @@ namespace AutoCal
             }
         }
 
+        #endregion
+
+        #region Methods
+
+        /// <summary>
+        /// Calls the .NET IDisposable method on the serial port and cleans up with the garbage collector
+        /// </summary>
         public void Dispose()
         {
             Dispose(true);
             GC.SuppressFinalize(this);
         }
 
+        /// <summary>
+        /// Uses closes the port properly and disposes using the3 serial port IDisposable method
+        /// </summary>
+        /// <param name="disposing"></param>
         protected virtual void Dispose(bool disposing)
         {
             if (disposing)
@@ -143,23 +161,28 @@ namespace AutoCal
                 }
                 catch (InvalidOperationException e)
                 {
-                    exceptionCatch(e); return false;
+                    exceptionCatch(e);
+                    return false;
                 }
                 catch (IOException e)
                 {
-                    exceptionCatch(e); return false;
+                    exceptionCatch(e);
+                    return false;
                 }
                 catch (UnauthorizedAccessException e)
                 {
-                    exceptionCatch(e); return false;
+                    exceptionCatch(e);
+                    return false;
                 }
                 catch (ArgumentOutOfRangeException e)
                 {
-                    exceptionCatch(e); return false;
+                    exceptionCatch(e);
+                    return false;
                 }
                 catch (ArgumentException e)
                 {
-                    exceptionCatch(e); return false;
+                    exceptionCatch(e);
+                    return false;
                 }
 
                 finally
@@ -171,6 +194,7 @@ namespace AutoCal
             }
             else
             {
+                exceptionCatch("Port Null");
                 return false;
             }
         }
@@ -179,6 +203,12 @@ namespace AutoCal
         {
             portErrorMessage = "An error occurred while trying to open the serial port " + dotNETPort.PortName.ToString() + "\nPlease check the port settings and try again\n" +
                 "Error message - " + e.Message;
+        }
+
+        private void exceptionCatch(string e)
+        {
+            portErrorMessage = "An error occurred while trying to open the serial port " + dotNETPort.PortName.ToString() + "\nPlease check the port settings and try again\n" +
+                "Error message - " + e;
         }
 
         /// <summary>
@@ -214,7 +244,8 @@ namespace AutoCal
         }
 
         /// <summary>
-        /// Returns null if there is no error, or the error message as a string to be displayed to the user
+        /// Returns an empty string if there is no error, or the error message as a string to be displayed to the user
+        /// Clear error after reading using clearPortError()
         /// </summary>
         public string CurrentPortError
         {
@@ -225,7 +256,16 @@ namespace AutoCal
         }
 
         /// <summary>
-        /// 
+        /// Once the port error has been shown to the user, it should be cleared before trying to open the port again
+        /// </summary>
+        public void ClearPortError()
+        {
+            portErrorMessage = "";
+        }
+
+        /// <summary>
+        /// Transmitts a string over the serial port using the Serial.Write() method
+        /// Encoding should be considered before passing string
         /// </summary>
         /// <param name="sendData"></param>
         public bool SendSerialData(string sendData)
@@ -256,7 +296,8 @@ namespace AutoCal
         }
 
         /// <summary>
-        /// 
+        /// Transmitts a byte array over the serial port using the Serial.write() method
+        /// Can be used to send custom data formats without text overhead
         /// </summary>
         /// <param name="sendData"></param>
         public bool SendSerialData(byte[] sendData)
@@ -297,13 +338,20 @@ namespace AutoCal
             }
         }
 
+        /// <summary>
+        /// Called when users try to send data to a serial port before it is opened
+        /// </summary>
         private void portNotOpenError()
         {
             portErrorMessage = "Serial port is not open";
         }
 
+        #endregion
+
+        #region Events
+
         /// <summary>
-        /// This function executes when data is recived on the serial port
+        /// This function executes when data is recived on the serial port and triggers the event handler
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
@@ -311,66 +359,52 @@ namespace AutoCal
         {
             int lengthToRead = dotNETPort.BytesToRead;        // Gets the length of data in the serial port buffer
             byte[] rxBytes = new byte[lengthToRead];    // Creates a byte array long enough to read all bits from the serial port
-            dotNETPort.Read(rxBytes, 0, lengthToRead);        // Reads the serial port buffer into rxByteCount
-            //PacketReceived((rxBytes, e);
+            dotNETPort.Read(rxBytes, 0, lengthToRead);        // Reads the serial port buffer into rxByteCount            
             OnPacketReceived(rxBytes);
         }
 
         /// <summary>
-        /// Sets up packet handler event
+        /// The event that triggers when ever data is recived on the serial port
+        /// Operations started from this even run on their own thread
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="packet"></param>
-        //public delegate void PacketReceivedEventHandler(object sender, byte[] packet);
-
-        /// <summary>
-        /// 
-        /// </summary>
-        //public event EventHandler<PacketReceivedEventHandler> OnPacketReceived;
         public event EventHandler<PacketEventArgs> PacketReceived;
 
         /// <summary>
         /// Sends packets to main form to be processed
         /// </summary>
         /// <param name="packet"></param>
-        /// <param name="e"></param>
-        public virtual void OnPacketReceived(byte[] packet)
+        protected virtual void OnPacketReceived(byte[] packet)
         {
             PacketReceived?.Invoke(this, new PacketEventArgs(packet));
         }
-        //public virtual void PacketReceived(byte[] packet, EventArgs e)
-        //{
-        //    var handler = OnPacketReceived;
-        //    if (handler != null)
-        //    {
-        //        handler.Invoke(this, new PacketReceivedEventHandler(packet));
-        //    }
-        //    //if (OnPacketReceived != null)
-        //    //{
-        //    //    OnPacketReceived(this, packet);                
-        //    //}
-        //}
     }
 
+    /// <summary>
+    /// Custom class for packet recived events, based on EventArgs
+    /// </summary>
     public class PacketEventArgs : EventArgs
     {
         private byte[] packet;
-        public byte[] Packet
+
+        /// <summary>
+        /// Allows new packets to be read by and set by constructor
+        /// </summary>
+        public byte[] Packet()
         {
-            get
-            {
-                return packet;
-            }
-            set
-            {
-                packet = value;
-            }
+            return packet;
         }
-        public PacketEventArgs(byte[] _packet)
+
+        /// <summary>
+        /// Constructor for PacketEventArgs, reads new packets
+        /// </summary>
+        /// <param name="inPacket"></param>
+        public PacketEventArgs(byte[] inPacket)
         {
-            Packet = _packet;
+            packet = inPacket;
         }
     }
+
+    #endregion
 
     #endregion
 
@@ -444,6 +478,7 @@ namespace AutoCal
     #region ExampleCode
 
     /// <summary>
+    /// WINFORMS EXAMPLE
     /// SerialPortParameters can be used to fill form elements for easier user selection
     /// </summary>
     //private void Form_Load(object sender, EventArgs e)
@@ -455,7 +490,33 @@ namespace AutoCal
     //}
 
     /// <summary>
-    /// 
+    /// XAML EXAMPLE
+    /// Adds common values for each serial port setting to a combobox and selects a default
+    /// </summary>
+    //private void populateSerialSettings()
+    //{
+    //    List<string> itemsToAdd = SerialPortParameters.BaudRates.ToList();
+    //    itemsToAdd.ForEach(item => serialPortBaudRate_CB.Items.Add(item));
+    //    serialPortBaudRate_CB.SelectedItem = "115200";
+
+    //    itemsToAdd.Clear();
+    //    itemsToAdd = SerialPortParameters.DataBits.ToList();
+    //    itemsToAdd.ForEach(item => serialPortDataBits_CB.Items.Add(item));
+    //    serialPortDataBits_CB.SelectedItem = "8";
+
+    //    itemsToAdd.Clear();
+    //    itemsToAdd = SerialPortParameters.ParityBits.ToList();
+    //    itemsToAdd.ForEach(item => serialPortParity_CB.Items.Add(item));
+    //    serialPortParity_CB.SelectedItem = "none";
+
+    //    itemsToAdd.Clear();
+    //    itemsToAdd = SerialPortParameters.StopBits.ToList();
+    //    itemsToAdd.ForEach(item => serialPortStopBits_CB.Items.Add(item));
+    //    serialPortStopBits_CB.SelectedItem = "one";
+    //}
+
+    /// <summary>
+    /// Example of how to setup the serial port and event handler
     /// </summary>
     //private void setupPort()
     //{
@@ -466,20 +527,42 @@ namespace AutoCal
     //    string portStop = serialPortStop_CB.SelectedItem.ToString();
 
     //    comPort = new AsyncSerial(portName, portBaud, portParity, portData, portStop); //comPort should be declared at class level
-    //    comPort.OnPacketReceived += new AsyncSerial.SerialDataReceivedEventHandler(supplySerial_onPacketReceived);
-    //    comPort.StartReceive();
+    //if (comPort.CurrentPortError != null | comPort.CurrentPortError != "")
+    //{
+    //    //No Error
+    //}
+    //else
+    //{
+    //    //Handle Error
+    //    comPort.clearPortError(); //Reset for next attempt
+    //}
+    //xbeeSerialDevice.PacketReceived += onXBeeSerial_receive;
+    //if (comPort.StartReceive())
+    //{
+
+    //}
+    //else
+    //{
+    //    //Port Error
+    //}
     //}
 
     /// <summary>
     /// This is the code that gets called when serial data is recived
     /// </summary>
-    //private void supplySerial_onPacketReceived(object sender, byte[] packet)
+    //private void onMySerial_receive(object sender, PacketEventArgs e)
     //{
-    //    byte[] serialData = packet;
-    //    string serialString = Encoding.Default.GetString(serialData);   //Byte array can be converted to a string
-    //    this.Invoke((MethodInvoker)delegate {
-    //        someFormItem.ChangeElement(serialString);   //Since the port is asynchronous you cannot change UI elements without a cross thread Invoker
+    //    byte[] packet = e.Packet;
+    //    string supplyMessage = Encoding.Default.GetString(packet); //Conver to string if needed
+
+    //    //WINFORM EXAMPLE
+    //    this.Invoke((MethodInvoker)delegate
+    //    {
+    //        someFormItem.property = someData; //Since the port is asynchronous you cannot change UI elements without a cross thread Invoker
     //    });
+
+    //    //XAML EXAMPLE
+    //    Dispatcher.Invoke(() => someFormItem.property = someData); //Since the port is asynchronous you cannot change UI elements without a cross thread Invoker
     //}
 
     //private void sendSerialData()
@@ -494,5 +577,5 @@ namespace AutoCal
     //    }
     //}
 
-    #endregion
-}
+        #endregion
+    }
