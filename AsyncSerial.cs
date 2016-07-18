@@ -2,7 +2,7 @@
 //MIT License(MIT)
 
 
-/*     AsyncSerial.cs Version 4.1        */
+/*     AsyncSerial.cs Version 4.2        */
 
 /*     Copyright(c) 2015 Mike Simpson      */
 
@@ -33,13 +33,13 @@ using System.Globalization;
 using System.IO;
 using System.IO.Ports;
 
-namespace AsyncSerial
+namespace NebularUI
 {
 
     #region classRegion
 
     /// <summary>
-    /// This class allows a serial port to be set up with different parameters
+    /// This class allows a serial port to be set up with different parameters.
     /// It contains functions to open and close the port safely
     /// </summary>
     public class AsyncSerial : IDisposable
@@ -419,7 +419,7 @@ namespace AsyncSerial
         private static string[] commonBaudRates = new string[] {"110", "300", "600", "1200", "2400", "4800", "9600", "14400", "19200", "28800", "38400", "56000",
             "57600", "115200", "128000", "153600", "230400", "256000", "460800", "921600", "1843200"};
         private static ReadOnlyCollection<string> readOnlyCommonBaudRates = new ReadOnlyCollection<string>(commonBaudRates);
-                
+
         private static string[] commonStopBits = new string[] { "none", "one", "onepointfive", "two" };
         private static ReadOnlyCollection<string> readOnlyCommonStopBits = new ReadOnlyCollection<string>(commonStopBits);
 
@@ -472,6 +472,17 @@ namespace AsyncSerial
                 return readOnlyCommonDataBits;
             }
         }
+
+        /// <summary>
+        /// Gets currently recognised serial port names connected to the computer, can be called when ever refreshed list is needed
+        /// </summary>
+        /// <returns></returns>
+        public static ReadOnlyCollection<string> GetSerialPorts()
+        {
+            ReadOnlyCollection<string> portNames = new ReadOnlyCollection<string>(SerialPort.GetPortNames());
+            return portNames;
+        }
+
     }
     #endregion
 
@@ -577,5 +588,5 @@ namespace AsyncSerial
     //    }
     //}
 
-        #endregion
-    }
+    #endregion
+}
