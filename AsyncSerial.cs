@@ -1,8 +1,7 @@
 ﻿#region Licence
 //MIT License(MIT)
 
-
-/*     AsyncSerial.cs Version 4.2        */
+/*     AsyncSerial.cs Version 4.3        */
 
 /*     Copyright(c) 2015 Mike Simpson      */
 
@@ -27,13 +26,12 @@
 
 
 using System;
-using System.Collections;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.IO;
 using System.IO.Ports;
 
-namespace NebularUI
+namespace AsyncSerial
 {
 
     #region classRegion
@@ -41,24 +39,32 @@ namespace NebularUI
     /// <summary>
     /// This class allows a serial port to be set up with different parameters.
     /// It contains functions to open and close the port safely
+    /// Implements IDisposable
     /// </summary>
     public class AsyncSerial : IDisposable
     {
 
         #region Varibles
 
+        /// <summary>
+        /// Underlying SerialPort object supported by .NET
+        /// </summary>
         SerialPort dotNETPort;
+
+        /// <summary>
+        /// Contains an error message if any of the functions return false
+        /// </summary>
         private string portErrorMessage = "";
 
         #endregion
 
         #region Constructo
         /// <summary>
-        /// Constructor for BoardSerialReciver
+        /// Constructor take 5 arguments to correctly configure the serial port
         /// </summary>
         /// <param name="portName"> Sets the port name of the serial port (string) </param>
         /// <param name="baudRate"> Sets the baud rate of the serial port (int) </param>
-        /// <param name="parity"> Currently unused </param>
+        /// <param name="parity"> Sets the parity bit system to use (string) </param>
         /// <param name="dataBits"> Sets the number of data bits of the serial port (int) </param>
         /// <param name="stopBits"> Sets the number of stop bits of the serial port (string) </param>
         public AsyncSerial(string portName, int baudRate, string parity, int dataBits, string stopBits)
@@ -91,7 +97,7 @@ namespace NebularUI
                 }
                 catch (IOException e)
                 {
-                    portErrorMessage = e.Message;
+                    exceptionCatch(e);
                 }
                 catch (ArgumentNullException e)
                 {
@@ -126,7 +132,7 @@ namespace NebularUI
         }
 
         /// <summary>
-        /// Uses closes the port properly and disposes using the3 serial port IDisposable method
+        /// Uses closes the port properly and disposes using the serial port IDisposable method
         /// </summary>
         /// <param name="disposing"></param>
         protected virtual void Dispose(bool disposing)
@@ -148,8 +154,7 @@ namespace NebularUI
         }
 
         /// <summary>
-        /// Open the serial port with defined values
-        /// Uses try catch to handle errors
+        /// Open the serial port with defined values, returns false and puts error message in 'portError' if the port fails to open
         /// </summary>
         public bool StartReceive()
         {
@@ -159,29 +164,29 @@ namespace NebularUI
                 {
                     dotNETPort.Open();
                 }
-                catch (InvalidOperationException e)
+                catch (InvalidOperationException Ex)
                 {
-                    exceptionCatch(e);
+                    exceptionCatch(Ex);
                     return false;
                 }
-                catch (IOException e)
+                catch (IOException Ex)
                 {
-                    exceptionCatch(e);
+                    exceptionCatch(Ex);
                     return false;
                 }
-                catch (UnauthorizedAccessException e)
+                catch (UnauthorizedAccessException Ex)
                 {
-                    exceptionCatch(e);
+                    exceptionCatch(Ex);
                     return false;
                 }
-                catch (ArgumentOutOfRangeException e)
+                catch (ArgumentOutOfRangeException Ex)
                 {
-                    exceptionCatch(e);
+                    exceptionCatch(Ex);
                     return false;
                 }
-                catch (ArgumentException e)
+                catch (ArgumentException Ex)
                 {
-                    exceptionCatch(e);
+                    exceptionCatch(Ex);
                     return false;
                 }
 
@@ -199,29 +204,55 @@ namespace NebularUI
             }
         }
 
-        private void exceptionCatch(Exception e)
+        /// <summary>
+        /// Exceptions can be passed to be recorded in the port error message
+        /// </summary>
+        /// <param name="Ex"></param>
+        private void exceptionCatch(Exception Ex)
         {
-            portErrorMessage = "An error occurred while trying to open the serial port " + dotNETPort.PortName.ToString() + "\nPlease check the port settings and try again\n" +
-                "Error message - " + e.Message;
-        }
-
-        private void exceptionCatch(string e)
-        {
-            portErrorMessage = "An error occurred while trying to open the serial port " + dotNETPort.PortName.ToString() + "\nPlease check the port settings and try again\n" +
-                "Error message - " + e;
+            portErrorMessage = defaltErrorText() + Ex.Message;
         }
 
         /// <summary>
-        /// Checks for null reference and that the port is open, then closes the port
+        /// Strings can be passed to be recorded in the port error message
+        /// </summary>
+        /// <param name="Ex"></param>
+        private void exceptionCatch(string Ex)
+        {
+            portErrorMessage = defaltErrorText() + Ex;
+        }
+
+        /// <summary>
+        /// Returns a stringing containing defalt text about errors which specific error information can be appended to
+        /// </summary>
+        /// <returns></returns>
+        private string defaltErrorText()
+        {
+            return "An error occurred while trying to open the serial port " + dotNETPort.PortName.ToString() + "\nPlease check the port settings and try again\n" + "Error message - ";
+        }
+
+        /// <summary>
+        /// Safely closes the port if open
         /// </summary>
         public void StopReceive()
         {
-            if (dotNETPort != null)
+            try
             {
-                if (dotNETPort.IsOpen)
+                if (dotNETPort != null)
                 {
-                    dotNETPort.Close();
+                    if (dotNETPort.IsOpen)
+                    {
+                        dotNETPort.Close();
+                    }
                 }
+            }
+            catch (ArgumentException Ex)
+            {
+                exceptionCatch(Ex);
+            }
+            catch (IOException Ex)
+            {
+                exceptionCatch(Ex);
             }
         }
 
@@ -244,23 +275,16 @@ namespace NebularUI
         }
 
         /// <summary>
-        /// Returns an empty string if there is no error, or the error message as a string to be displayed to the user
-        /// Clear error after reading using clearPortError()
+        /// Returns an empty/null string if there is no error, or the error message as a string to be displayed to the user, auto clears once read
         /// </summary>
         public string CurrentPortError
         {
             get
             {
-                return portErrorMessage;
+                string returnError = portErrorMessage;
+                portErrorMessage = "";
+                return returnError;
             }
-        }
-
-        /// <summary>
-        /// Once the port error has been shown to the user, it should be cleared before trying to open the port again
-        /// </summary>
-        public void ClearPortError()
-        {
-            portErrorMessage = "";
         }
 
         /// <summary>
@@ -277,20 +301,25 @@ namespace NebularUI
                     dotNETPort.Write(sendData);
                     return true;
                 }
-                catch (InvalidOperationException e)
+                catch (InvalidOperationException Ex)
                 {
-                    exceptionCatch(e);
+                    exceptionCatch(Ex);
                     return false;
                 }
-                catch (ArgumentNullException e)
+                catch (ArgumentNullException Ex)
                 {
-                    exceptionCatch(e);
+                    exceptionCatch(Ex);
+                    return false;
+                }
+                catch (OverflowException Ex)
+                {
+                    exceptionCatch(Ex);
                     return false;
                 }
             }
             else
             {
-                portNotOpenError();
+                exceptionCatch("Port nto open");
                 return false;
             }
         }
@@ -310,40 +339,37 @@ namespace NebularUI
                     return true;
                 }
 
-                catch (InvalidOperationException e)
+                catch (InvalidOperationException Ex)
                 {
-                    exceptionCatch(e);
+                    exceptionCatch(Ex);
                     return false;
                 }
-                catch (ArgumentNullException e)
+                catch (ArgumentNullException Ex)
                 {
-                    exceptionCatch(e);
+                    exceptionCatch(Ex);
                     return false;
                 }
-                catch (ArgumentOutOfRangeException e)
+                catch (ArgumentOutOfRangeException Ex)
                 {
-                    exceptionCatch(e);
+                    exceptionCatch(Ex);
                     return false;
                 }
-                catch (ArgumentException e)
+                catch (ArgumentException Ex)
                 {
-                    exceptionCatch(e);
+                    exceptionCatch(Ex);
+                    return false;
+                }
+                catch(OverflowException Ex)
+                {
+                    exceptionCatch(Ex);
                     return false;
                 }
             }
             else
             {
-                portNotOpenError();
+                exceptionCatch("Port not open");
                 return false;
             }
-        }
-
-        /// <summary>
-        /// Called when users try to send data to a serial port before it is opened
-        /// </summary>
-        private void portNotOpenError()
-        {
-            portErrorMessage = "Serial port is not open";
         }
 
         #endregion
@@ -357,9 +383,9 @@ namespace NebularUI
         /// <param name="e"></param>
         private void port_OnDataRecived(object sender, SerialDataReceivedEventArgs e)
         {
-            int lengthToRead = dotNETPort.BytesToRead;        // Gets the length of data in the serial port buffer
-            byte[] rxBytes = new byte[lengthToRead];    // Creates a byte array long enough to read all bits from the serial port
-            dotNETPort.Read(rxBytes, 0, lengthToRead);        // Reads the serial port buffer into rxByteCount            
+            int lengthToRead = dotNETPort.BytesToRead;
+            byte[] rxBytes = new byte[lengthToRead];
+            dotNETPort.Read(rxBytes, 0, lengthToRead);        
             OnPacketReceived(rxBytes);
         }
 
@@ -370,7 +396,7 @@ namespace NebularUI
         public event EventHandler<PacketEventArgs> PacketReceived;
 
         /// <summary>
-        /// Sends packets to main form to be processed
+        /// Sends packets to calling function to be processed
         /// </summary>
         /// <param name="packet"></param>
         protected virtual void OnPacketReceived(byte[] packet)
@@ -409,6 +435,7 @@ namespace NebularUI
     #endregion
 
     #region PortParameters
+
     /// <summary>
     /// Provides string arrays containing common (or enforced) port parameters which you can use to populate menus in foreach loops etc 
     /// ReadOnlyCollections can be cast to a array using .ToArray()
@@ -463,7 +490,7 @@ namespace NebularUI
         }
 
         /// <summary>
-        /// Genrally supported data bits (7 for ASCII but 8 for ease of use)
+        /// Genrally supported data bits (7 for ASCII, 8 for ease of use)
         /// </summary>
         public static ReadOnlyCollection<string> DataBits
         {
@@ -477,10 +504,13 @@ namespace NebularUI
         /// Gets currently recognised serial port names connected to the computer, can be called when ever refreshed list is needed
         /// </summary>
         /// <returns></returns>
-        public static ReadOnlyCollection<string> GetSerialPorts()
+        public static ReadOnlyCollection<string> GetSerialPorts
         {
-            ReadOnlyCollection<string> portNames = new ReadOnlyCollection<string>(SerialPort.GetPortNames());
-            return portNames;
+            get
+            {
+                ReadOnlyCollection<string> portNames = new ReadOnlyCollection<string>(SerialPort.GetPortNames());
+                return portNames;
+            }
         }
 
     }
@@ -488,10 +518,10 @@ namespace NebularUI
 
     #region ExampleCode
 
-    /// <summary>
-    /// WINFORMS EXAMPLE
-    /// SerialPortParameters can be used to fill form elements for easier user selection
-    /// </summary>
+    // <summary>
+    // WINFORMS EXAMPLE
+    // SerialPortParameters can be used to fill form elements for easier user selection
+    // </summary>
     //private void Form_Load(object sender, EventArgs e)
     //{
     //    serialPortBaud_CB.Items.AddRange(SerialPortParameters.BaudRates.ToArray());
@@ -500,10 +530,10 @@ namespace NebularUI
     //    serialPortStop_CB.Items.AddRange(SerialPortParameters.StopBits.ToArray());
     //}
 
-    /// <summary>
-    /// XAML EXAMPLE
-    /// Adds common values for each serial port setting to a combobox and selects a default
-    /// </summary>
+    // <summary>
+    // XAML EXAMPLE
+    // Adds common values for each serial port setting to a combobox and selects a default
+    // </summary>
     //private void populateSerialSettings()
     //{
     //    List<string> itemsToAdd = SerialPortParameters.BaudRates.ToList();
@@ -526,9 +556,9 @@ namespace NebularUI
     //    serialPortStopBits_CB.SelectedItem = "one";
     //}
 
-    /// <summary>
-    /// Example of how to setup the serial port and event handler
-    /// </summary>
+    // <summary>
+    // Example of how to setup the serial port and event handler
+    // </summary>
     //private void setupPort()
     //{
     //    string portName = serialPortName_TB.Text;
@@ -547,7 +577,7 @@ namespace NebularUI
     //    //Handle Error
     //    comPort.clearPortError(); //Reset for next attempt
     //}
-    //xbeeSerialDevice.PacketReceived += onXBeeSerial_receive;
+    //comPort.PacketReceived += onComSerial_receive;
     //if (comPort.StartReceive())
     //{
 
@@ -558,9 +588,9 @@ namespace NebularUI
     //}
     //}
 
-    /// <summary>
-    /// This is the code that gets called when serial data is recived
-    /// </summary>
+    // <summary>
+    // This is the code that gets called when serial data is recived
+    // </summary>
     //private void onMySerial_receive(object sender, PacketEventArgs e)
     //{
     //    byte[] packet = e.Packet;
