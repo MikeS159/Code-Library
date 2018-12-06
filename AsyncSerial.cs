@@ -1,9 +1,9 @@
 ﻿#region Licence
 //MIT License(MIT)
 
-/*     AsyncSerial.cs Version 4.3        */
+/*     AsyncSerial.cs Version 4.3.0        */
 
-/*     Copyright(c) 2015 Mike Simpson      */
+/*     Copyright(c) 2018 Mike Simpson      */
 
 //Permission is hereby granted, free of charge, to any person obtaining a copy
 //of this software and associated documentation files (the "Software"), to deal
@@ -385,7 +385,7 @@ namespace AsyncSerial
         {
             int lengthToRead = dotNETPort.BytesToRead;
             byte[] rxBytes = new byte[lengthToRead];
-            dotNETPort.Read(rxBytes, 0, lengthToRead);        
+            dotNETPort.Read(rxBytes, 0, lengthToRead);
             OnPacketReceived(rxBytes);
         }
 
@@ -437,7 +437,7 @@ namespace AsyncSerial
     #region PortParameters
 
     /// <summary>
-    /// Provides string arrays containing common (or enforced) port parameters which you can use to populate menus in foreach loops etc 
+    /// Provides string arrays containing common (or enforced) port parameters which you can use to populate menus in foreach loops etc
     /// ReadOnlyCollections can be cast to a array using .ToArray()
     /// </summary>
     public static class SerialPortParameters
@@ -458,7 +458,7 @@ namespace AsyncSerial
 
         /// <summary>
         /// Commonly used serial baud rates, system dependant but usually produced by a 1.843200MHz oscillator
-        /// </summary>        
+        /// </summary>
         public static ReadOnlyCollection<string> BaudRates
         {
             get
